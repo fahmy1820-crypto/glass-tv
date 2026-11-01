@@ -58,7 +58,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     }
 
     static final class Entry {
-        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2;
+        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, SETTINGS = 3;
 
         final int kind;
         final String label;
@@ -261,6 +261,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     new ComponentName(ctx, HomeSettingsActivity.class), null,
                     ctx.getDrawable(R.drawable.ic_home_settings), null, 0));
         }
+fresh.add(new Entry(Entry.SETTINGS, "Settings", new ComponentName("com.android.tv.settings", "com.android.tv.settings.MainSettings"), null, ctx.getDrawable(R.drawable.ic_home_settings), null, 0));
         items.clear();
         items.addAll(fresh);
         notifyDataSetChanged();
@@ -359,13 +360,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     /** Whether the tile at {@code position} can be moved: every app can, the Default home tile cannot. */
     boolean canMove(int position) {
-        return position >= 0 && position < items.size() && items.get(position).kind != Entry.HOME_SETTINGS;
+        return position >= 0 && position < items.size() && items.get(position).kind != Entry.HOME_SETTINGS && items.get(position).kind != Entry.SETTINGS;
     }
 
     /** The last position a moved tile can take: before the Default home tile, which stays last. */
     int lastMovable() {
         int last = items.size() - 1;
-        while (last >= 0 && items.get(last).kind == Entry.HOME_SETTINGS) last--;
+        while (last >= 0 && (items.get(last).kind == Entry.HOME_SETTINGS || items.get(last).kind == Entry.SETTINGS)) last--;
         return last;
     }
 
@@ -382,7 +383,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         int lo = Math.min(from, to), hi = Math.max(from, to);
         if (lo < dockSize && hi >= dockSize) notifyItemRangeChanged(lo, hi - lo + 1, DOCK_CHANGED);
         arranged.clear();
-        for (Entry x : items) if (x.kind != Entry.HOME_SETTINGS) arranged.add(x.component.flattenToShortString());
+        for (Entry x : items) if (x.kind != Entry.HOME_SETTINGS && x.kind != Entry.SETTINGS) arranged.add(x.component.flattenToShortString());
         ctx.getSharedPreferences(ORDER_PREFS, Context.MODE_PRIVATE).edit()
                 .putString(ORDER_KEY, android.text.TextUtils.join("\n", arranged)).apply();
         return true;
@@ -390,6 +391,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     /** Opens the tile's activity by explicit component, with no extras: a card can name nothing else. */
     private void launch(Entry e) {
+if (e.kind == Entry.SETTINGS) { ctx.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return; }
         if (e.kind == Entry.HOME_SETTINGS) {
             ctx.startActivity(new Intent(ctx, HomeSettingsActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
