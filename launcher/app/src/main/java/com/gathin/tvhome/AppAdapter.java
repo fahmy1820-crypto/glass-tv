@@ -13,6 +13,8 @@ import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.media.AudioAttributes;
+import android.media.SoundPool;
 import android.net.Uri;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
@@ -46,6 +48,29 @@ import java.util.Set;
  * join at the end.
  */
 public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
+
+    private static SoundPool tingPool;
+    private static int tingId;
+    private static boolean tingReady;
+    private static long tingLast;
+
+    static void playTing(Context c) {
+        try {
+            if (tingPool == null) {
+                tingPool = new SoundPool.Builder().setMaxStreams(2)
+                    .setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build();
+                tingPool.setOnLoadCompleteListener((sp, id, status) -> tingReady = (status == 0));
+                tingId = tingPool.load(c.getApplicationContext(), R.raw.glass_ting, 1);
+            }
+            long now = System.currentTimeMillis();
+            if (tingReady && now - tingLast > 60) {
+                tingLast = now;
+                tingPool.play(tingId, 1f, 1f, 1, 0, 1f);
+            }
+        } catch (Throwable ignored) {}
+    }
 
     interface TileListener {
         void onTileFocused(int position, View card);
@@ -527,6 +552,7 @@ if (e.kind == Entry.SETTINGS) { ctx.startActivity(new Intent(Settings.ACTION_SET
             });
 
             card.setOnFocusChangeListener((view, focused) -> {
+                if (focused) playTing(view.getContext());
                 float s = focused ? FOCUS_SCALE : 1.0f;
                 view.animate().cancel();
                 name.animate().cancel();
